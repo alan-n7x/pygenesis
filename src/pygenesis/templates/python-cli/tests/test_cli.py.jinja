@@ -1,0 +1,21 @@
+"""Tests for the CLI."""
+
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
+from {{ module_name }}.cli import main
+
+
+def test_help_returns_zero() -> None:
+    exit_code = main(["--help"])
+    assert exit_code == 0
+
+
+def test_version_output() -> None:
+    exit_code = main(["--version"])
+    assert exit_code == 0

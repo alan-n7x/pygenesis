@@ -1,0 +1,13 @@
+[Unit]
+Description={{ project.name }}
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/{{ module_name }}
+Restart=on-failure
+User=nobody
+Group=nogroup
+
+[Install]
+WantedBy=multi-user.target

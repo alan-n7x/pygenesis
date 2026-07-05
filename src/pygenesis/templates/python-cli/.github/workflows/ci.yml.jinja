@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "{{ python.minimum }}"
+      - uses: yezz123/setup-uv@v4
+      - run: uv venv && uv sync
+      - run: uv run ruff check src/ tests/
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "{{ python.minimum }}"
+      - uses: yezz123/setup-uv@v4
+      - run: uv venv && uv sync
+      - run: uv run mypy src/
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["{{ python.minimum }}", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ "{{" }} matrix.python-version {{ "}}" }}
+      - uses: yezz123/setup-uv@v4
+      - run: uv venv && uv sync
+      - run: uv run pytest
