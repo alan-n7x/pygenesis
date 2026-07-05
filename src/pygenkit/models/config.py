@@ -29,7 +29,7 @@ class ReleaseConfig:
 
 @dataclass
 class PyPIConfig:
-    enabled: bool = True
+    enabled: bool = False
     environment: str = "pypi"
     trusted_publishing: bool = True
 
@@ -169,7 +169,7 @@ tag_prefix = "v"
 changelog = "CHANGELOG.md"
 
 [pypi]
-enabled = true
+enabled = false
 environment = "pypi"
 trusted_publishing = true
 
@@ -185,7 +185,7 @@ revision = "1"
 [github]
 ci = true
 release = true
-publish_pypi = true
+publish_pypi = false
 publish_launchpad = true
 
 [docker]
