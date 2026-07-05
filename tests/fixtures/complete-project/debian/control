@@ -1,0 +1,6 @@
+Source: complete-project
+Section: python
+Priority: optional
+Maintainer: Author <author@example.com>
+Build-Depends: debhelper-compat (= 13), dh-python
+Standards-Version: 4.7.0

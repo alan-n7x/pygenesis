@@ -22,7 +22,7 @@ def test_help_output() -> None:
 def test_version_output() -> None:
     result = runner.invoke(cli, ["--version"])
     assert result.exit_code == 0
-    assert "0.1.0" in result.stdout.replace("PyGenesis v", "")
+    assert "0.2.0" in result.stdout
 
 
 def test_doctor_runs() -> None:
@@ -31,12 +31,38 @@ def test_doctor_runs() -> None:
     assert "PyGenesis" in result.stdout
 
 
-def test_new_requires_name() -> None:
-    result = runner.invoke(cli, ["new"])
+def test_init_creates_config() -> None:
+    result = runner.invoke(cli, ["init", "my-app"], standalone_mode=False)
+    assert result.exit_code == 0
+    config = Path("pygenesis.toml")
+    assert config.exists()
+    config.unlink()
+
+
+def test_init_requires_name() -> None:
+    result = runner.invoke(cli, ["init"])
     assert result.exit_code != 0
 
 
-def test_validate_missing_config(tmp_path: Path) -> None:
-    result = runner.invoke(cli, ["validate", str(tmp_path / "nonexistent.yaml")])
+def test_inspect_runs() -> None:
+    result = runner.invoke(cli, ["inspect"])
+    assert result.exit_code in (0, 1)
+    assert "Inspecting" in result.stdout
+
+
+def test_validate_fails_without_config(tmp_path: Path) -> None:
+    result = runner.invoke(cli, ["validate", "--config", str(tmp_path / "nonexistent.toml")])
+    assert result.exit_code == 1
+    assert "not found" in result.stdout
+
+
+def test_generate_fails_without_config(tmp_path: Path) -> None:
+    result = runner.invoke(cli, ["generate", "--config", str(tmp_path / "nonexistent.toml")])
+    assert result.exit_code == 1
+    assert "not found" in result.stdout
+
+
+def test_release_check_fails_without_config(tmp_path: Path) -> None:
+    result = runner.invoke(cli, ["release-check", "--config", str(tmp_path / "nonexistent.toml")])
     assert result.exit_code == 1
     assert "not found" in result.stdout

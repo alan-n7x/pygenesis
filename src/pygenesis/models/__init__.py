@@ -1,4 +1,19 @@
-from pygenesis.models.config import ProjectConfig, TemplateType
-from pygenesis.models.template import Template
+from pygenesis.models.config import (
+    CIConfig,
+    DebianConfig,
+    ProjectConfig,
+    PyGenesisConfig,
+    PyPIConfig,
+    ReleaseConfig,
+)
+from pygenesis.models.inspection import ProjectInspection
 
-__all__ = ["ProjectConfig", "Template", "TemplateType"]
+__all__ = [
+    "PyGenesisConfig",
+    "ProjectConfig",
+    "CIConfig",
+    "ReleaseConfig",
+    "PyPIConfig",
+    "DebianConfig",
+    "ProjectInspection",
+]

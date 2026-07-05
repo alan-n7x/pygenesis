@@ -5,7 +5,7 @@ from pathlib import Path
 import typer
 
 
-def validate_cmd(
+def release_check_cmd(
     config: Path = typer.Option("pygenesis.toml", "--config", "-c", help="Config file"),  # noqa: B008
 ) -> None:
     if not config.exists():
@@ -13,4 +13,4 @@ def validate_cmd(
         typer.echo("  Run: pygenesis init <name>")
         raise typer.Exit(code=1)
 
-    typer.echo("  [validate] Validation coming in Stage 3.")
+    typer.echo("  [release-check] Readiness check coming in Stage 5.")

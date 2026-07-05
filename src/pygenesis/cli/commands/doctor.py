@@ -20,7 +20,7 @@ class DoctorCheck:
     def run(self) -> dict[str, Any]:
         try:
             result = self.check_fn()
-            return {"name": self.name, "ok": True, "detail": result, "hint": ""}
+            return {"name": self.name, "ok": True, "detail": str(result), "hint": ""}
         except Exception as exc:
             return {"name": self.name, "ok": False, "detail": str(exc), "hint": self.hint}
 
@@ -29,58 +29,69 @@ def _check_python() -> str:
     return sys.version.split()[0]
 
 
-def _check_uv() -> str:
-    result = subprocess.run(["uv", "--version"], capture_output=True, text=True, timeout=10)
-    return result.stdout.strip()
-
-
 def _check_git() -> str:
-    result = subprocess.run(["git", "--version"], capture_output=True, text=True, timeout=10)
-    return result.stdout.strip()
+    r = subprocess.run(["git", "--version"], capture_output=True, text=True, timeout=10)
+    return r.stdout.strip()
+
+
+def _check_gh() -> str:
+    if not shutil.which("gh"):
+        raise RuntimeError("not found")
+    r = subprocess.run(["gh", "--version"], capture_output=True, text=True, timeout=10)
+    return r.stdout.split("\n")[0] if r.stdout else "found"
 
 
 def _check_gpg() -> str:
-    result = subprocess.run(["gpg", "--version"], capture_output=True, text=True, timeout=10)
-    first_line = result.stdout.split("\n")[0] if result.stdout else ""
-    return first_line
+    if not shutil.which("gpg"):
+        raise RuntimeError("not found (apt install gnupg)")
+    return "found"
 
 
-def _check_dput() -> str | None:
-    if shutil.which("dput"):
-        return "found"
-    return None
+def _check_dput() -> str:
+    if not shutil.which("dput"):
+        raise RuntimeError("not found (apt install dput)")
+    return "found"
 
 
-def _check_debhelper() -> str | None:
-    if shutil.which("dh"):
-        return "found"
-    return None
+def _check_debhelper() -> str:
+    if not shutil.which("dh"):
+        raise RuntimeError("not found (apt install debhelper)")
+    return "found"
 
 
-def _check_gh() -> str | None:
-    if shutil.which("gh"):
-        result = subprocess.run(["gh", "--version"], capture_output=True, text=True, timeout=10)
-        return result.stdout.split("\n")[0] if result.stdout else "found"
-    return None
+def _check_twine() -> str:
+    r = subprocess.run(
+        [sys.executable, "-m", "twine", "--version"],
+        capture_output=True, text=True, timeout=10,
+    )
+    if r.returncode != 0:
+        raise RuntimeError("not installed (pip install twine)")
+    return r.stdout.strip()
 
 
-def _check_pypirc() -> str:
-    from pathlib import Path
-    pypirc = Path.home() / ".pypirc"
-    return "found" if pypirc.exists() else "not found"
+def _check_build_module() -> str:
+    r = subprocess.run(
+        [sys.executable, "-m", "build", "--version"],
+        capture_output=True, text=True, timeout=10,
+    )
+    if r.returncode != 0:
+        raise RuntimeError("not installed (pip install build)")
+    return r.stdout.strip()
 
 
 def doctor_cmd() -> None:
     checks = [
         DoctorCheck("Python", _check_python, "Install Python 3.12+ from python.org"),
-        DoctorCheck("uv", _check_uv, "Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh"),
-        DoctorCheck("Git", _check_git, "Install git: apt install git"),
-        DoctorCheck("GPG", _check_gpg, "Install gnupg: apt install gnupg"),
-        DoctorCheck("dput", _check_dput, "Install dput: apt install dput"),
-        DoctorCheck("debhelper", _check_debhelper, "Install debhelper: apt install debhelper"),
-        DoctorCheck("GitHub CLI", _check_gh, "Install gh: https://cli.github.com"),
+        DoctorCheck("Git", _check_git, "apt install git"),
+        DoctorCheck("GitHub CLI", _check_gh, "Install from https://cli.github.com"),
+        DoctorCheck("GPG", _check_gpg, "apt install gnupg"),
+        DoctorCheck("dput", _check_dput, "apt install dput"),
+        DoctorCheck("debhelper", _check_debhelper, "apt install debhelper"),
         DoctorCheck(
-            "PyPI token (~/.pypirc)", _check_pypirc, "Create ~/.pypirc with your PyPI token"
+            "twine", _check_twine, "pip install twine"
+        ),
+        DoctorCheck(
+            "build", _check_build_module, "pip install build"
         ),
     ]
 
@@ -91,13 +102,13 @@ def doctor_cmd() -> None:
     for check in checks:
         result = check.run()
         if result["ok"]:
-            typer.echo(f"  ✓ {result['name']}: {result['detail']}")
+            typer.echo(f"  \u2713 {result['name']}: {result['detail']}")
         else:
             all_ok = False
             detail = f" ({result['detail']})" if result["detail"] else ""
-            typer.echo(f"  ✗ {result['name']}: not found{detail}")
+            typer.echo(f"  \u2717 {result['name']}: not found{detail}")
             if result["hint"]:
-                typer.echo(f"    → {result['hint']}")
+                typer.echo(f"    \u2192 {result['hint']}")
 
     typer.echo("")
     if all_ok:

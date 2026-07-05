@@ -1,4 +1,3 @@
-from pygenesis.config.loader import ConfigLoader
-from pygenesis.config.validator import ConfigValidator
+from pygenesis.models.config import PyGenesisConfig
 
-__all__ = ["ConfigLoader", "ConfigValidator"]
+__all__ = ["PyGenesisConfig"]

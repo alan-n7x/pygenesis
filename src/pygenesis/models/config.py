@@ -1,100 +1,157 @@
 from __future__ import annotations
 
+import tomllib
 from dataclasses import dataclass, field
-from enum import StrEnum
-from typing import Any
-
-
-class LicenseType(StrEnum):
-    MIT = "MIT"
-    APACHE_2_0 = "Apache-2.0"
-    GPL_3_0 = "GPL-3.0"
-    BSD_3_CLAUSE = "BSD-3-Clause"
-    MPL_2_0 = "MPL-2.0"
-    UNLICENSED = "UNLICENSED"
-
-
-class TemplateType(StrEnum):
-    PYTHON_CLI = "python-cli"
-    PYTHON_DAEMON = "python-daemon"
-    PYTHON_LIBRARY = "python-library"
-    FASTAPI = "fastapi"
-    STREAMLIT = "streamlit"
-
-
-@dataclass
-class AuthorConfig:
-    name: str
-    email: str
-
-
-@dataclass
-class GitHubConfig:
-    owner: str
-
-
-@dataclass
-class DebianConfig:
-    ppa: str = "tools"
-
-
-@dataclass
-class PythonConfig:
-    minimum: str = "3.12"
-
-
-@dataclass
-class ProjectMetadata:
-    name: str
-    package: str
-    version: str
+from pathlib import Path
 
 
 @dataclass
 class ProjectConfig:
-    project: ProjectMetadata
-    author: AuthorConfig
-    github: GitHubConfig
-    license: LicenseType = LicenseType.MIT
+    name: str
+    version: str = "0.1.0"
+
+
+@dataclass
+class CIConfig:
+    python_versions: list[str] = field(default_factory=lambda: ["3.12"])
+    runner: str = "ubuntu-latest"
+    lint: bool = True
+    type_check: bool = True
+
+
+@dataclass
+class ReleaseConfig:
+    branch: str = "main"
+    tag_prefix: str = "v"
+    changelog: str = "CHANGELOG.md"
+
+
+@dataclass
+class PyPIConfig:
+    enabled: bool = True
+    environment: str = "pypi"
+    trusted_publishing: bool = True
+
+
+@dataclass
+class DebianConfig:
+    enabled: bool = True
+    email: str = ""
+    name: str = ""
+    ppa: str = "tools"
+    distributions: list[str] = field(default_factory=lambda: ["noble"])
+    revision: str = "1"
+
+
+@dataclass
+class PyGenesisConfig:
+    project: ProjectConfig
+    ci: CIConfig = field(default_factory=CIConfig)
+    release: ReleaseConfig = field(default_factory=ReleaseConfig)
+    pypi: PyPIConfig = field(default_factory=PyPIConfig)
     debian: DebianConfig = field(default_factory=DebianConfig)
-    python: PythonConfig = field(default_factory=PythonConfig)
-    template: TemplateType = TemplateType.PYTHON_CLI
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ProjectConfig:
-        proj = data["project"]
-        author = data["author"]
-        github = data["github"]
+    def load(cls, path: str | Path) -> PyGenesisConfig:
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Config not found: {path}")
+
+        raw = path.read_bytes()
+        data = tomllib.loads(raw.decode("utf-8"))
 
         return cls(
-            project=ProjectMetadata(
-                name=proj["name"],
-                package=proj.get("package", proj["name"].replace("-", "_")),
-                version=proj.get("version", "0.1.0"),
+            project=ProjectConfig(
+                name=data.get("project", {}).get("name", ""),
+                version=data.get("project", {}).get("version", "0.1.0"),
             ),
-            author=AuthorConfig(
-                name=author["name"],
-                email=author["email"],
+            ci=CIConfig(
+                python_versions=data.get("ci", {}).get("python_versions", ["3.12"]),
+                runner=data.get("ci", {}).get("runner", "ubuntu-latest"),
+                lint=data.get("ci", {}).get("lint", True),
+                type_check=data.get("ci", {}).get("type_check", True),
             ),
-            github=GitHubConfig(owner=github["owner"]),
-            license=LicenseType(data.get("license", "MIT")),
-            debian=DebianConfig(ppa=data.get("debian", {}).get("ppa", "tools")),
-            python=PythonConfig(minimum=data.get("python", {}).get("minimum", "3.12")),
-            template=TemplateType(data.get("template", "python-cli")),
+            release=ReleaseConfig(
+                branch=data.get("release", {}).get("branch", "main"),
+                tag_prefix=data.get("release", {}).get("tag_prefix", "v"),
+                changelog=data.get("release", {}).get("changelog", "CHANGELOG.md"),
+            ),
+            pypi=PyPIConfig(
+                enabled=data.get("pypi", {}).get("enabled", True),
+                environment=data.get("pypi", {}).get("environment", "pypi"),
+                trusted_publishing=data.get("pypi", {}).get("trusted_publishing", True),
+            ),
+            debian=DebianConfig(
+                enabled=data.get("debian", {}).get("enabled", True),
+                email=data.get("debian", {}).get("email", ""),
+                name=data.get("debian", {}).get("name", ""),
+                ppa=data.get("debian", {}).get("ppa", "tools"),
+                distributions=data.get("debian", {}).get("distributions", ["noble"]),
+                revision=data.get("debian", {}).get("revision", "1"),
+            ),
         )
 
-    @property
-    def module_name(self) -> str:
-        return self.project.package
+    @classmethod
+    def generate_default(cls, name: str) -> str:
+        return f"""[project]
+name = "{name}"
+version = "0.1.0"
 
-    @property
-    def github_repo(self) -> str:
-        return f"{self.github.owner}/{self.project.name}"
+[ci]
+python_versions = ["3.12", "3.13"]
+runner = "ubuntu-latest"
+lint = true
+type_check = true
 
-    @property
-    def github_url(self) -> str:
-        return f"https://github.com/{self.github_repo}"
+[release]
+branch = "main"
+tag_prefix = "v"
+changelog = "CHANGELOG.md"
 
-    @property
-    def debian_package(self) -> str:
-        return self.project.name.replace("_", "-").lower()
+[pypi]
+enabled = true
+environment = "pypi"
+trusted_publishing = true
+
+[debian]
+enabled = true
+email = ""
+name = ""
+ppa = "tools"
+distributions = ["noble"]
+revision = "1"
+"""
+
+    def save(self, path: str | Path) -> None:
+        path = Path(path)
+        path.write_text(self._to_toml(), encoding="utf-8")
+
+    def _to_toml(self) -> str:
+        return f"""[project]
+name = "{self.project.name}"
+version = "{self.project.version}"
+
+[ci]
+python_versions = {self.ci.python_versions}
+runner = "{self.ci.runner}"
+lint = {str(self.ci.lint).lower()}
+type_check = {str(self.ci.type_check).lower()}
+
+[release]
+branch = "{self.release.branch}"
+tag_prefix = "{self.release.tag_prefix}"
+changelog = "{self.release.changelog}"
+
+[pypi]
+enabled = {str(self.pypi.enabled).lower()}
+environment = "{self.pypi.environment}"
+trusted_publishing = {str(self.pypi.trusted_publishing).lower()}
+
+[debian]
+enabled = {str(self.debian.enabled).lower()}
+email = "{self.debian.email}"
+name = "{self.debian.name}"
+ppa = "{self.debian.ppa}"
+distributions = {self.debian.distributions}
+revision = "{self.debian.revision}"
+"""
